@@ -1,0 +1,17 @@
+#ifndef ASSET_IDS_H
+#define ASSET_IDS_H
+
+typedef enum SpriteAssetId {
+    SPRITE_ASSET_PROTAGONIST_PLACEHOLDER = 0,
+    SPRITE_ASSET_ENEMY_PLACEHOLDER,
+    SPRITE_ASSET_TARGET_CURSOR,
+    SPRITE_ASSET_UI_CURSOR,
+    SPRITE_ASSET_COUNT
+} SpriteAssetId;
+
+typedef enum BgAssetId {
+    BG_ASSET_BATTLE_PLACEHOLDER = 0,
+    BG_ASSET_COUNT
+} BgAssetId;
+
+#endif

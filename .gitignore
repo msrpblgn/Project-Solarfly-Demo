@@ -1,0 +1,38 @@
+# Build intermediates (keep the playable ROM for portfolio download)
+/build/**
+!/build/
+!/build/project_solarfly_gba.gba
+/build_*/
+*.elf
+*.sav
+*.o
+*.d
+*.exe
+*.map
+/project_solarfly_gba.map
+
+# Python caches
+**/__pycache__/
+*.py[cod]
+
+# Scratch / temporary artifacts
+_t*.gif
+_t.c
+**/_t*.gif
+**/_fftest/
+**/_gif_test/
+**/_inspect*/
+**/_preview*/
+**/_ase_export/
+**/mgba_shots/
+
+# Host-test binary leftovers (keep *.c / *.h sources)
+tools/host_tests/test_*_host
+!tools/host_tests/*.c
+!tools/host_tests/*.h
+tools/host_tests/_t.c
+tools/host_tests/m3r2_*.txt
+
+# Local tooling that must not ship
+tools/mgba/
+.cursor/
