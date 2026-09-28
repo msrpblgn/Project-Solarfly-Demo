@@ -4,7 +4,7 @@ GBA tech demo for **Project Solarfly**: Mode 3 battles, a Mode 0 overworld field
 
 ## Download and play
 
-1. Grab the prebuilt ROM at **`build/project_solarfly_gba.gba`**
+1. Download the prebuilt ROM at **`build/project_solarfly_gba.gba`**
 2. Install **[mGBA](https://mgba.io/)** (0.10.x or newer)
 3. Open the ROM: **File → Load ROM…** and select `build/project_solarfly_gba.gba`  
    Or from a terminal:
