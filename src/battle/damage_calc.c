@@ -4,8 +4,23 @@
 
 #define DEFAULT_CRIT_PERMILLE 50
 #define DAMAGE_DISTANCE_SCALE_PER_SLOT_PERCENT 25
-/* Incoming damage while Downed: 1.5x via existing percent truncate (/ 100). */
+/*
+ * Incoming damage while Downed: 1.5x only from Dark / Chaos / Light moves.
+ * Uses the shared percent truncate convention (/ 100).
+ */
 #define DOWNED_INCOMING_DAMAGE_MULTIPLIER_PERCENT 150
+
+static int DamageCalc_MoveExploitsDowned(const MoveData *move)
+{
+    if (!move)
+    {
+        return 0;
+    }
+
+    return move->element == BATTLE_ELEMENT_DARK
+        || move->element == BATTLE_ELEMENT_CHAOS
+        || move->element == BATTLE_ELEMENT_LIGHT;
+}
 
 static int DamageCalc_EffectiveDefenceValue(int defence)
 {
@@ -277,8 +292,8 @@ void DamageCalc_Resolve(
         damage = (damage * move->lpBonusDamageMultiplierPercent) / 100;
     }
 
-    /* All combatants: while Downed, take 1.5x damage from any attack. */
-    if (BattleMember_IsDowned(defender))
+    /* All combatants: while Downed, take 1.5x only from Dark/Chaos/Light. */
+    if (BattleMember_IsDowned(defender) && DamageCalc_MoveExploitsDowned(move))
     {
         damage = (damage * DOWNED_INCOMING_DAMAGE_MULTIPLIER_PERCENT) / 100;
     }

@@ -1,5 +1,5 @@
 /*
- * Host test: Downed targets take 1.5x incoming damage in DamageCalc_Resolve.
+ * Host test: Downed targets take 1.5x only from Dark / Chaos / Light moves.
  *
  * Build (WSL):
  *   gcc -std=c11 -Wall -Wextra -O0 \
@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "battle/battle_element.h"
 #include "battle/battle_member.h"
 #include "battle/battle_move.h"
 #include "battle/battle_result.h"
@@ -104,7 +105,126 @@ static void SetupPair(BattleMember *attacker, BattleMember *defender)
     BattleMember_ClearStatuses(defender);
 }
 
-static void TestDownedMultiplierAndRecovery(void)
+static void ExpectMoveElement(MoveId moveId, BattleElementId element, const char *label)
+{
+    const MoveData *move = MoveData_Get(moveId);
+    ExpectTrue(move != NULL, label);
+    ExpectEqInt((int)move->element, (int)element, label);
+}
+
+static void TestDownedVulnerableElements(void)
+{
+    BattleMember attacker;
+    BattleMember defender;
+    int baselineDark;
+    int baselineChaos;
+    int baselineLight;
+
+    printf("\n== Downed 1.5x only for Dark / Chaos / Light ==\n");
+    Random_Init(1);
+    SetupPair(&attacker, &defender);
+
+    ExpectMoveElement(MOVE_DARK_TEST, BATTLE_ELEMENT_DARK, "Dark Test is Dark");
+    ExpectMoveElement(MOVE_CHAOS_TEST, BATTLE_ELEMENT_CHAOS, "Chaos Test is Chaos");
+    ExpectMoveElement(MOVE_LIGHT_TEST, BATTLE_ELEMENT_LIGHT, "Light Test is Light");
+
+    baselineDark = ResolveHitDamage(&attacker, &defender, MOVE_DARK_TEST, 15);
+    baselineChaos = ResolveHitDamage(&attacker, &defender, MOVE_CHAOS_TEST, 15);
+    baselineLight = ResolveHitDamage(&attacker, &defender, MOVE_LIGHT_TEST, 15);
+    ExpectTrue(baselineDark > 0 && baselineChaos > 0 && baselineLight > 0,
+               "vulnerable-element baselines positive");
+
+    ExpectTrue(BattleMember_AddStatus(&defender, BATTLE_STATUS_DOWNED), "apply Downed");
+    ExpectTrue(BattleMember_IsDowned(&defender), "defender is Downed");
+
+    ExpectEqInt(
+        ResolveHitDamage(&attacker, &defender, MOVE_DARK_TEST, 15),
+        (baselineDark * 150) / 100,
+        "Downed + Dark is baseline * 1.5 (truncate)");
+    ExpectEqInt(
+        ResolveHitDamage(&attacker, &defender, MOVE_CHAOS_TEST, 15),
+        (baselineChaos * 150) / 100,
+        "Downed + Chaos is baseline * 1.5 (truncate)");
+    ExpectEqInt(
+        ResolveHitDamage(&attacker, &defender, MOVE_LIGHT_TEST, 15),
+        (baselineLight * 150) / 100,
+        "Downed + Light is baseline * 1.5 (truncate)");
+}
+
+static void TestDownedUnaffectedElements(void)
+{
+    BattleMember attacker;
+    BattleMember defender;
+    int baselineNone;
+    int baselineFire;
+    int baselineCurse;
+    int baselineMight;
+
+    printf("\n== Downed does not amplify other elements ==\n");
+    Random_Init(2);
+    SetupPair(&attacker, &defender);
+
+    ExpectMoveElement(MOVE_HAMMER_FIST, BATTLE_ELEMENT_NONE, "Hammer Fist is untyped");
+    ExpectMoveElement(MOVE_BURN_TEST, BATTLE_ELEMENT_FIRE, "Burn Test is Fire");
+    ExpectMoveElement(MOVE_PHANTOM_PHIST, BATTLE_ELEMENT_CURSE, "Phantom Phist is Curse");
+    ExpectMoveElement(MOVE_DIRECT_ATTACK, BATTLE_ELEMENT_MIGHT, "Direct Attack is Might");
+
+    baselineNone = ResolveHitDamage(&attacker, &defender, MOVE_HAMMER_FIST, 30);
+    baselineFire = ResolveHitDamage(&attacker, &defender, MOVE_BURN_TEST, 15);
+    baselineCurse = ResolveHitDamage(&attacker, &defender, MOVE_PHANTOM_PHIST, 30);
+    baselineMight = ResolveHitDamage(&attacker, &defender, MOVE_DIRECT_ATTACK, 20);
+
+    ExpectTrue(BattleMember_AddStatus(&defender, BATTLE_STATUS_DOWNED), "apply Downed");
+
+    ExpectEqInt(
+        ResolveHitDamage(&attacker, &defender, MOVE_HAMMER_FIST, 30),
+        baselineNone,
+        "Downed + untyped stays normal");
+    ExpectEqInt(
+        ResolveHitDamage(&attacker, &defender, MOVE_BURN_TEST, 15),
+        baselineFire,
+        "Downed + Fire stays normal");
+    ExpectEqInt(
+        ResolveHitDamage(&attacker, &defender, MOVE_PHANTOM_PHIST, 30),
+        baselineCurse,
+        "Downed + Curse stays normal");
+    ExpectEqInt(
+        ResolveHitDamage(&attacker, &defender, MOVE_DIRECT_ATTACK, 20),
+        baselineMight,
+        "Downed + Might stays normal");
+}
+
+static void TestStandingNoVulnerableBonus(void)
+{
+    BattleMember attacker;
+    BattleMember defender;
+    int darkA;
+    int darkB;
+    int chaosA;
+    int lightA;
+
+    printf("\n== Standing targets ignore Dark/Chaos/Light Downed bonus ==\n");
+    Random_Init(3);
+    SetupPair(&attacker, &defender);
+
+    ExpectTrue(!BattleMember_IsDowned(&defender), "defender starts standing");
+    darkA = ResolveHitDamage(&attacker, &defender, MOVE_DARK_TEST, 15);
+    chaosA = ResolveHitDamage(&attacker, &defender, MOVE_CHAOS_TEST, 15);
+    lightA = ResolveHitDamage(&attacker, &defender, MOVE_LIGHT_TEST, 15);
+
+    darkB = ResolveHitDamage(&attacker, &defender, MOVE_DARK_TEST, 15);
+    ExpectEqInt(darkB, darkA, "standing Dark damage is stable");
+    ExpectEqInt(
+        ResolveHitDamage(&attacker, &defender, MOVE_CHAOS_TEST, 15),
+        chaosA,
+        "standing Chaos damage is stable");
+    ExpectEqInt(
+        ResolveHitDamage(&attacker, &defender, MOVE_LIGHT_TEST, 15),
+        lightA,
+        "standing Light damage is stable");
+}
+
+static void TestDownedRecoveryClearsBonus(void)
 {
     BattleMember attacker;
     BattleMember defender;
@@ -112,32 +232,25 @@ static void TestDownedMultiplierAndRecovery(void)
     int downedDamage;
     int afterRemove;
     int afterExpiry;
-    int expectedDowned;
 
-    printf("\n== Downed 1.5x incoming damage ==\n");
-    Random_Init(1);
+    printf("\n== Downed Dark bonus ends with status ==\n");
+    Random_Init(4);
     SetupPair(&attacker, &defender);
 
-    baseline = ResolveHitDamage(&attacker, &defender, MOVE_HAMMER_FIST, 30);
-    ExpectTrue(baseline > 0, "baseline damage positive");
-
+    baseline = ResolveHitDamage(&attacker, &defender, MOVE_DARK_TEST, 15);
     ExpectTrue(BattleMember_AddStatus(&defender, BATTLE_STATUS_DOWNED), "apply Downed");
-    ExpectTrue(BattleMember_IsDowned(&defender), "defender is Downed");
-    downedDamage = ResolveHitDamage(&attacker, &defender, MOVE_HAMMER_FIST, 30);
-    expectedDowned = (baseline * 150) / 100;
-    ExpectEqInt(downedDamage, expectedDowned, "Downed damage is baseline * 1.5 (truncate)");
+    downedDamage = ResolveHitDamage(&attacker, &defender, MOVE_DARK_TEST, 15);
+    ExpectEqInt(downedDamage, (baseline * 150) / 100, "Downed Dark amplified");
 
     ExpectTrue(BattleMember_RemoveStatus(&defender, BATTLE_STATUS_DOWNED), "clear Downed");
-    ExpectTrue(!BattleMember_IsDowned(&defender), "Downed ended via remove");
-    afterRemove = ResolveHitDamage(&attacker, &defender, MOVE_HAMMER_FIST, 30);
-    ExpectEqInt(afterRemove, baseline, "damage returns to normal after Downed ends");
+    afterRemove = ResolveHitDamage(&attacker, &defender, MOVE_DARK_TEST, 15);
+    ExpectEqInt(afterRemove, baseline, "Dark damage normal after remove");
 
-    /* Also verify end-of-round style expiry restores normal damage. */
     ExpectTrue(BattleMember_AddStatus(&defender, BATTLE_STATUS_DOWNED), "re-apply Downed");
     ExpectTrue(BattleMember_TickDownedDuration(&defender), "Downed expires after tick");
     ExpectTrue(!BattleMember_IsDowned(&defender), "Downed ended via expiry tick");
-    afterExpiry = ResolveHitDamage(&attacker, &defender, MOVE_HAMMER_FIST, 30);
-    ExpectEqInt(afterExpiry, baseline, "damage normal after Downed expiry");
+    afterExpiry = ResolveHitDamage(&attacker, &defender, MOVE_DARK_TEST, 15);
+    ExpectEqInt(afterExpiry, baseline, "Dark damage normal after expiry");
 }
 
 static void TestDownedAppliesToPlayerTarget(void)
@@ -147,10 +260,9 @@ static void TestDownedAppliesToPlayerTarget(void)
     int baseline;
     int downedDamage;
 
-    printf("\n== Downed multiplier on player target ==\n");
-    Random_Init(2);
+    printf("\n== Downed Dark multiplier on player target ==\n");
+    Random_Init(5);
     SetupPair(&attacker, &defender);
-    /* Flip roles: enemy hits Downed player. */
     {
         BattleMember tmp = attacker;
         attacker = defender;
@@ -161,15 +273,23 @@ static void TestDownedAppliesToPlayerTarget(void)
         defender.slotIndex = PETALBURG_ALLY_PROTAGONIST_SLOT;
     }
 
-    baseline = ResolveHitDamage(&attacker, &defender, MOVE_JAB, 20);
-    ExpectTrue(BattleMember_AddStatus(&defender, BATTLE_STATUS_DOWNED), "Down player");
-    downedDamage = ResolveHitDamage(&attacker, &defender, MOVE_JAB, 20);
-    ExpectEqInt(downedDamage, (baseline * 150) / 100, "player Downed takes 1.5x");
+    baseline = ResolveHitDamage(&attacker, &defender, MOVE_DARK_TEST, 15);
+    {
+        int jabBaseline = ResolveHitDamage(&attacker, &defender, MOVE_JAB, 20);
+
+        ExpectTrue(BattleMember_AddStatus(&defender, BATTLE_STATUS_DOWNED), "Down player");
+        downedDamage = ResolveHitDamage(&attacker, &defender, MOVE_DARK_TEST, 15);
+        ExpectEqInt(downedDamage, (baseline * 150) / 100, "player Downed takes 1.5x from Dark");
+        ExpectEqInt(
+            ResolveHitDamage(&attacker, &defender, MOVE_JAB, 20),
+            jabBaseline,
+            "player Downed Jab stays unamplified");
+    }
     BattleMember_RemoveStatus(&defender, BATTLE_STATUS_DOWNED);
     ExpectEqInt(
-        ResolveHitDamage(&attacker, &defender, MOVE_JAB, 20),
+        ResolveHitDamage(&attacker, &defender, MOVE_DARK_TEST, 15),
         baseline,
-        "player damage normal after standing up");
+        "player Dark damage normal after standing up");
 }
 
 static void TestOddDamageTruncate(void)
@@ -179,27 +299,27 @@ static void TestOddDamageTruncate(void)
     int baseline;
     int downedDamage;
 
-    printf("\n== Fractional Downed damage uses truncate ==\n");
-    Random_Init(3);
+    printf("\n== Fractional Downed Dark damage uses truncate ==\n");
+    Random_Init(6);
     SetupPair(&attacker, &defender);
 
-    /* Force an odd baseline via ApplyAttackDefence path with known inputs. */
     baseline = DamageCalc_ApplyAttackDefence(7, 5, 3); /* (7*5)/3 = 11 */
     ExpectEqInt(baseline, 11, "odd baseline from atk/def");
     ExpectEqInt((baseline * 150) / 100, 16, "11 * 1.5 truncates to 16");
 
-    /* Drive Resolve with a power that yields the same odd intermediate when possible.
-     * Still assert the shared percent convention on the Resolve path. */
-    baseline = ResolveHitDamage(&attacker, &defender, MOVE_HAMMER_FIST, 1);
+    baseline = ResolveHitDamage(&attacker, &defender, MOVE_DARK_TEST, 1);
     ExpectTrue(BattleMember_AddStatus(&defender, BATTLE_STATUS_DOWNED), "Downed for truncate check");
-    downedDamage = ResolveHitDamage(&attacker, &defender, MOVE_HAMMER_FIST, 1);
-    ExpectEqInt(downedDamage, (baseline * 150) / 100, "Resolve uses /100 truncate for 1.5x");
+    downedDamage = ResolveHitDamage(&attacker, &defender, MOVE_DARK_TEST, 1);
+    ExpectEqInt(downedDamage, (baseline * 150) / 100, "Resolve uses /100 truncate for Dark 1.5x");
 }
 
 int main(void)
 {
     g_failures = 0;
-    TestDownedMultiplierAndRecovery();
+    TestDownedVulnerableElements();
+    TestDownedUnaffectedElements();
+    TestStandingNoVulnerableBonus();
+    TestDownedRecoveryClearsBonus();
     TestDownedAppliesToPlayerTarget();
     TestOddDamageTruncate();
     printf("\n%s\n", g_failures == 0 ? "ALL TESTS PASSED" : "SOME TESTS FAILED");
