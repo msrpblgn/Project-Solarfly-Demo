@@ -2,7 +2,7 @@
 
 A turn-based RPG for the Game Boy Advance, set on the inside of a hollow world. I'm designing and building it solo.
 
-**Download:** [`build/project_solarfly_gba.gba`](build/project_solarfly_gba.gba) (build of 17 October 2026)
+**Download:** [`build/project_solarfly_gba.gba`](build/project_solarfly_gba.gba) (build of 16 November 2026)
 **More about it:** [msrpblgn.github.io/projects/solarfly](https://msrpblgn.github.io/projects/solarfly/)
 
 This is a playable prototype, not a finished game. The source code is not public.
@@ -17,20 +17,19 @@ The game boots into a menu with three entries:
 
 | Entry | What's there |
 | --- | --- |
-| **Dunclain Story Demo** | Walk the road to the fishing town of Dunclain. Press **L+R** to look up at the far side of the world. **B** returns to the menu. |
+| **Duncluain Story Demo** | A tutorial spar between Joan and Maren (press **B** to skip it), then the forest of Foraois on the way to Duncluain. Joan and Maren walk the field together: **A** attacks with the leader's weapon, **L** / **R** hand over the lead, hold **B** to run, and **SELECT** looks up at the far side of the world. Stun a roaming enemy with a Highly Effective hit and touch it to start the battle with the upper hand. **START** opens the menu: party, items, skill trees, the Almanac, settings and save. The top of the map ends the demo with a boss battle. |
 | **Rouglike Demo** | A 30-stage roguelike run: four playable allies, new skills and recruits to earn between battles, two bosses. **Save and Quit** keeps your run on the cartridge save. |
 | **Tool Demos** | Single battles, a custom battle builder, a dialogue demo and an overworld test. |
 
-In battle, **Select** zooms the camera onto any unit to read its live stats; **Left/Right** changes unit.
+In battle, **Select** zooms the camera onto any unit to read its live stats; **Left/Right** changes unit. The battle log runs beside the command menu; highlight it (**Right**) and press **A** to read it in full.
 
 ## What's not in yet
 
-Connected story maps, NPCs, a story save, audio and music.
+Connected story maps, NPCs, story events, spending points in the skill trees, Maren's own field sprite, audio and music.
 
 ## Credits
 
-- Overworld tiles: “Monochromatic Island Exterior Pack” by Anima_nel (purchased licence; the tiles are used in the game, not distributed separately).
-- Some enemy sprites in the roguelike mode come from a free asset pack, used under its licence.
+- Some enemy sprites (bats, slimes, skeletons and others) come from a free asset pack, used under its licence.
 
 Everything else is by Mehmet Sarp Bilgin.
 
